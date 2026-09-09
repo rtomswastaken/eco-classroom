@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { CheckCircle2, XCircle, Clock, AlertCircle, Sparkles, Eye, X } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Sparkles, Eye, X, Trash2, ShieldAlert } from 'lucide-react';
 
 export default function PendingSubmissions() {
   const { 
     activities, 
     approveActivity, 
-    rejectActivity 
+    rejectActivity,
+    removeActivity 
   } = useApp();
 
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'history'
   const [pointsState, setPointsState] = useState({});
   const [rejectModalActivity, setRejectModalActivity] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [deleteModalActivity, setDeleteModalActivity] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState(null);
 
   const pendingList = activities.filter(a => a.status === 'pending');
@@ -39,6 +42,18 @@ export default function PendingSubmissions() {
     rejectActivity(rejectModalActivity.id, rejectReason);
     setRejectModalActivity(null);
     setRejectReason('');
+  };
+
+  const handleOpenDelete = (activity) => {
+    setDeleteModalActivity(activity);
+    setDeleteReason('');
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteModalActivity) return;
+    removeActivity(deleteModalActivity.id, deleteReason);
+    setDeleteModalActivity(null);
+    setDeleteReason('');
   };
 
   return (
@@ -184,7 +199,17 @@ export default function PendingSubmissions() {
                       onClick={() => handleOpenReject(activity)}
                     >
                       <XCircle size={15} />
-                      <span>Reject / Feedback</span>
+                      <span>Feedback</span>
+                    </button>
+
+                    <button 
+                      className="btn-reject"
+                      style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+                      onClick={() => handleOpenDelete(activity)}
+                      title="Permanently remove this submission"
+                    >
+                      <Trash2 size={15} />
+                      <span>Remove</span>
                     </button>
                   </div>
                 </div>
@@ -233,6 +258,24 @@ export default function PendingSubmissions() {
                     {activity.status === 'approved' ? `+${activity.pointsAwarded} pts awarded` : '0 pts'}
                   </span>
                 </div>
+
+                <button
+                  className="btn-reject"
+                  style={{
+                    marginTop: '12px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    fontSize: '0.84rem',
+                    border: '1px solid #fecaca',
+                    background: '#fef2f2',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleOpenDelete(activity)}
+                  title="Remove this student work"
+                >
+                  <Trash2 size={14} />
+                  <span>Remove Work {activity.status === 'approved' ? `(-${activity.pointsAwarded} pts)` : ''}</span>
+                </button>
               </div>
             </div>
           ))}
@@ -309,6 +352,82 @@ export default function PendingSubmissions() {
                   onClick={handleConfirmReject}
                 >
                   Send Feedback to Student
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Work Confirmation Modal */}
+      {deleteModalActivity && (
+        <div className="modal-backdrop" onClick={() => setDeleteModalActivity(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3 style={{ color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldAlert size={22} />
+                <span>Remove Student Work?</span>
+              </h3>
+              <button className="modal-close-btn" onClick={() => setDeleteModalActivity(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f8fafc', padding: '12px', borderRadius: '10px', marginBottom: '14px', border: '1px solid #e2e8f0' }}>
+                <img 
+                  src={deleteModalActivity.photo} 
+                  alt={deleteModalActivity.title} 
+                  style={{ width: '52px', height: '52px', borderRadius: '8px', objectFit: 'cover' }} 
+                />
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a', marginBottom: '2px' }}>
+                    {deleteModalActivity.title}
+                  </h4>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    by {deleteModalActivity.studentAvatar} {deleteModalActivity.studentName} • Status: <strong style={{ textTransform: 'capitalize', color: deleteModalActivity.status === 'approved' ? '#16a34a' : '#f59e0b' }}>{deleteModalActivity.status}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {deleteModalActivity.status === 'approved' ? (
+                <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px', color: '#991b1b', fontSize: '0.86rem', lineHeight: 1.5 }}>
+                  ⚠️ <strong>Point Deduction Warning:</strong> This activity was previously approved with <strong>+{deleteModalActivity.pointsAwarded} Eco Points</strong>. Removing it will delete the activity record and <strong>deduct {deleteModalActivity.pointsAwarded} points</strong> from {deleteModalActivity.studentName}'s total score.
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.9rem', color: '#475569', marginBottom: '16px' }}>
+                  Are you sure you want to remove <strong>"{deleteModalActivity.title}"</strong>? This will permanently delete it from the review queue and student records.
+                </p>
+              )}
+
+              <div className="form-group" style={{ marginBottom: '18px' }}>
+                <label className="form-label" htmlFor="delete-reason" style={{ fontSize: '0.85rem' }}>
+                  Optional Note / Reason for Removal:
+                </label>
+                <input
+                  id="delete-reason"
+                  className="form-input"
+                  type="text"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="e.g. Duplicate submission, test entry, unverified photo"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => setDeleteModalActivity(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn-reject"
+                  style={{ background: '#dc2626', color: '#ffffff', fontWeight: 700 }}
+                  onClick={handleConfirmDelete}
+                >
+                  <Trash2 size={16} />
+                  <span>Yes, Remove Work</span>
                 </button>
               </div>
             </div>

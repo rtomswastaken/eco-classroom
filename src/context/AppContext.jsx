@@ -208,6 +208,50 @@ export function AppProvider({ children }) {
     showToast(`Activity returned with feedback.`, 'info');
   };
 
+  // Teacher removes an activity (pending, approved, or rejected)
+  const removeActivity = (activityId, reason = '') => {
+    const activity = data.activities.find(a => a.id === activityId);
+    if (!activity) return;
+
+    const wasApproved = activity.status === 'approved';
+    const pointsToDeduct = wasApproved ? (activity.pointsAwarded || 0) : 0;
+
+    const updatedActivities = data.activities.filter(a => a.id !== activityId);
+
+    const updatedStudents = data.students.map(s => {
+      if (s.id === activity.studentId) {
+        return {
+          ...s,
+          points: wasApproved ? Math.max(0, s.points - pointsToDeduct) : s.points,
+          activitiesCount: wasApproved ? Math.max(0, s.activitiesCount - 1) : s.activitiesCount,
+        };
+      }
+      return s;
+    });
+
+    const removalNotification = {
+      id: `notif-${Date.now()}`,
+      studentId: activity.studentId,
+      title: '🗑️ Activity Removed by Teacher',
+      message: `"${activity.title}" was removed${wasApproved ? ` and ${pointsToDeduct} points were deducted` : ''}.${reason ? ` Reason: ${reason}` : ''}`,
+      timestamp: 'Just now',
+      type: 'warn',
+      read: false,
+    };
+
+    setData(prev => ({
+      ...prev,
+      activities: updatedActivities,
+      students: updatedStudents,
+      notifications: [removalNotification, ...prev.notifications],
+    }));
+
+    showToast(
+      `Removed "${activity.title}"${wasApproved ? ` (-${pointsToDeduct} pts)` : ''}`,
+      'info'
+    );
+  };
+
   // Teacher creates challenge
   const createChallenge = ({ title, categoryId, bonusPoints, startDate, endDate, description }) => {
     const cat = categories.find(c => c.id === categoryId) || categories[0];
@@ -346,6 +390,8 @@ export function AppProvider({ children }) {
         submitActivity,
         approveActivity,
         rejectActivity,
+        removeActivity,
+        setActiveTab: setTeacherTab,
         createChallenge,
         joinChallenge,
         updateStudentProfile,

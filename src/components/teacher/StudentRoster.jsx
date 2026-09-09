@@ -4,9 +4,10 @@ import { Users, Trash2, Eye, ShieldAlert, X, Award, CheckCircle } from 'lucide-r
 import { getStudentLevel, evaluateStudentBadges } from '../../types/data';
 
 export default function StudentRoster() {
-  const { students, activities, removeStudent, classroom } = useApp();
+  const { students, activities, removeStudent, removeActivity, classroom } = useApp();
   const [selectedStudentForModal, setSelectedStudentForModal] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [confirmDeleteActivity, setConfirmDeleteActivity] = useState(null);
 
   const handleOpenStudentModal = (student) => {
     setSelectedStudentForModal(student);
@@ -240,12 +241,65 @@ export default function StudentRoster() {
                         </div>
                       </div>
 
-                      <span style={{ fontWeight: 800, color: act.status === 'approved' ? '#16a34a' : '#f59e0b', fontSize: '0.9rem' }}>
-                        {act.status === 'approved' ? `+${act.pointsAwarded} pts` : 'Pending'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontWeight: 800, color: act.status === 'approved' ? '#16a34a' : '#f59e0b', fontSize: '0.9rem' }}>
+                          {act.status === 'approved' ? `+${act.pointsAwarded} pts` : 'Pending'}
+                        </span>
+                        <button
+                          className="btn-reject"
+                          style={{ padding: '5px 8px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => setConfirmDeleteActivity(act)}
+                          title="Remove this student work"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Removal Confirmation Modal */}
+      {confirmDeleteActivity && (
+        <div className="modal-backdrop" onClick={() => setConfirmDeleteActivity(null)} style={{ zIndex: 1100 }}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h3 style={{ color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldAlert size={20} />
+                <span>Remove Student Work?</span>
+              </h3>
+              <button className="modal-close-btn" onClick={() => setConfirmDeleteActivity(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: '0.92rem', color: '#334155', marginBottom: '12px' }}>
+                Remove <strong>"{confirmDeleteActivity.title}"</strong> from {confirmDeleteActivity.studentName}'s records?
+              </p>
+              {confirmDeleteActivity.status === 'approved' && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px', color: '#991b1b', fontSize: '0.84rem' }}>
+                  ⚠️ This work was approved with <strong>+{confirmDeleteActivity.pointsAwarded} points</strong>. Removing it will deduct {confirmDeleteActivity.pointsAwarded} points from the student.
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button className="btn-secondary" onClick={() => setConfirmDeleteActivity(null)}>
+                  Cancel
+                </button>
+                <button 
+                  className="btn-reject"
+                  style={{ background: '#dc2626', color: '#ffffff', fontWeight: 700 }}
+                  onClick={() => {
+                    removeActivity(confirmDeleteActivity.id);
+                    setConfirmDeleteActivity(null);
+                  }}
+                >
+                  <Trash2 size={14} />
+                  <span>Yes, Remove Work</span>
+                </button>
               </div>
             </div>
           </div>
